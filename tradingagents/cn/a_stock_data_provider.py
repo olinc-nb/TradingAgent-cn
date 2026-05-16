@@ -223,12 +223,17 @@ class AStockDataProvider(ChinaMarketDataProvider):
         if bars:
             return bars
 
+        bars = self._tencent_daily_bars(symbol)
+        if bars:
+            self._add_limitation("mootdx 不可用，已使用腾讯财经日线接口补齐 K 线。")
+            return bars
+
         quote = self._get_quote(symbol)
         if not quote:
             self._used_fallback = True
             return self.fallback_provider.get_daily_bars(symbol, start_date, end_date)
 
-        self._add_limitation("mootdx 不可用，日线行情暂以腾讯财经实时行情快照构造，不能替代完整 K 线。")
+        self._add_limitation("mootdx/腾讯日线均不可用，日线行情暂以实时行情快照构造，不能替代完整 K 线。")
         end = date.fromisoformat(end_date)
         close = quote.get("price") or quote.get("last_close") or 0
         last_close = quote.get("last_close") or close
@@ -611,6 +616,49 @@ class AStockDataProvider(ChinaMarketDataProvider):
                 }
             )
         return [bar for bar in bars if bar["date"] and bar["close"]]
+
+    def _tencent_daily_bars(self, symbol: CNSymbol) -> list[dict]:
+        code = _tencent_prefix(symbol.code) + symbol.code
+        url = (
+            f"https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
+            f"?param={code},day,,,120,qfq"
+        )
+        try:
+            response = _session().get(
+                url,
+                headers={
+                    "User-Agent": "Mozilla/5.0",
+                    "Referer": "https://stockapp.finance.qq.com/",
+                },
+                timeout=8,
+            )
+            if response.status_code != 200:
+                return []
+            payload = response.json()
+        except (requests.RequestException, ValueError) as exc:
+            self._add_limitation(f"腾讯日线接口调用失败: {exc}")
+            return []
+
+        series = (payload.get("data") or {}).get(code) or {}
+        rows = series.get("qfqday") or series.get("day") or []
+        bars: list[dict] = []
+        for row in rows:
+            if not row or len(row) < 6:
+                continue
+            try:
+                bars.append(
+                    {
+                        "date": str(row[0])[:10],
+                        "open": float(row[1]),
+                        "close": float(row[2]),
+                        "high": float(row[3]),
+                        "low": float(row[4]),
+                        "volume": int(float(row[5])),
+                    }
+                )
+            except (TypeError, ValueError):
+                continue
+        return [bar for bar in bars if bar["date"] and bar["high"] >= bar["low"]]
 
     def _akshare_individual_info(self, symbol: CNSymbol) -> dict:
         try:
