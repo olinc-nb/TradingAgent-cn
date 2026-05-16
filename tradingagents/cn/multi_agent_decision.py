@@ -369,6 +369,9 @@ class CNAstockLLMDecisionWriter:
             "temperature": 0.2,
             "max_tokens": max_tokens or 2600,
         }
+        effort = self.config.get("openai_reasoning_effort")
+        if effort and self.provider == "openai":
+            payload["reasoning_effort"] = effort
         errors = []
         session = _llm_gateway_session()
         for attempt in range(1, 3):

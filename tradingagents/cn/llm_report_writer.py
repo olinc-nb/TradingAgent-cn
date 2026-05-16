@@ -86,6 +86,9 @@ class CNLLMReportWriter:
             "temperature": 0.2,
             "max_tokens": 1800,
         }
+        effort = self.config.get("openai_reasoning_effort")
+        if effort and self.provider == "openai":
+            payload["reasoning_effort"] = effort
         errors = []
         session = _llm_gateway_session()
         for url in _chat_completion_urls(self.base_url):
