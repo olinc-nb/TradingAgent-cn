@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TradingAgents CN · 可视化工作台</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">TA</div>
+        <div class="brand-text">
+          <strong>TradingAgents CN</strong>
+          <span>真实 K 线 · 趋势 · LLM 辩论链路</span>
+        </div>
+      </div>
+      <div class="topbar-meta">
+        <a class="topbar-link" href="/">分析台</a>
+        <span id="runtime" class="runtime-pill" title="运行配置">
+          <span class="dot" aria-hidden="true"></span>
+          <span class="runtime-text">正在读取运行配置...</span>
+          <span class="runtime-divider" aria-hidden="true"></span>
+          <label class="runtime-model" title="选择 LLM 模型">
+            <span class="runtime-model-label">模型</span>
+            <select id="model" name="model" form="visual-form">
+              <option value="gpt-5.4" selected>GPT-5.4</option>
+              <option value="gpt-5.5">GPT-5.5</option>
+            </select>
+          </label>
+        </span>
+        <button
+          id="theme-toggle"
+          class="icon-btn"
+          type="button"
+          aria-label="切换主题"
+          title="切换主题"
+        >
+          <span class="theme-icon" aria-hidden="true"></span>
+        </button>
+      </div>
+    </header>
+
+    <main class="shell visual-shell">
+      <section class="toolbar" aria-label="visual controls">
+        <form id="visual-form" class="controls visual-controls" autocomplete="off">
+          <label class="field field-symbol">
+            <span>标的代码</span>
+            <input
+              id="symbol"
+              name="symbol"
+              value="600519"
+              placeholder="输入股票、ETF 或指数代码，如 600519、588290、000300"
+              autocomplete="off"
+            />
+          </label>
+          <label class="field">
+            <span>分析深度</span>
+            <select id="depth" name="depth">
+              <option value="quick">快速 Quick</option>
+              <option value="standard">标准 Standard</option>
+              <option value="deep">深度 Deep</option>
+            </select>
+          </label>
+          <label class="field toggle">
+            <input id="include-decision" name="include_decision" type="checkbox" checked />
+            <span>展示辩论</span>
+          </label>
+          <button id="submit-btn" type="submit">
+            <span class="btn-label">刷新图表</span>
+            <span class="btn-spinner" aria-hidden="true"></span>
+          </button>
+        </form>
+
+        <div id="status" class="status status-idle" role="status" aria-live="polite">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span class="status-text">输入标的代码后加载真实行情 K 线、均线趋势和多智能体辩论链路。</span>
+        </div>
+      </section>
+
+      <section class="visual-grid">
+        <article class="panel chart-panel">
+          <header class="panel-header">
+            <div class="panel-kicker">
+              <span class="kicker-tag">Real K-Line</span>
+              <span id="chart-provider" class="kicker-hint">等待数据</span>
+            </div>
+            <h2 id="chart-title">真实 K 线图</h2>
+            <p id="chart-subtitle" class="panel-subtitle">OHLC 与成交量来自 cn 数据 provider。</p>
+          </header>
+          <div class="chart-stage">
+            <canvas id="kline-chart" width="1080" height="520" aria-label="真实 K 线图"></canvas>
+          </div>
+        </article>
+
+        <article class="panel chart-panel">
+          <header class="panel-header">
+            <div class="panel-kicker">
+              <span class="kicker-tag">Trend</span>
+              <span class="kicker-hint">Close · MA5 · MA20</span>
+            </div>
+            <h2>趋势图</h2>
+            <p id="trend-subtitle" class="panel-subtitle">收盘价、短期均线与中期均线。</p>
+          </header>
+          <div class="chart-stage">
+            <canvas id="trend-chart" width="1080" height="380" aria-label="趋势图"></canvas>
+          </div>
+        </article>
+      </section>
+
+      <section class="panel debate-panel">
+        <header class="panel-header">
+          <div class="panel-kicker">
+            <span class="kicker-tag">LLM Debate</span>
+            <span class="kicker-hint">分析师 → 投研辩论 → 交易员 → 风控 → 组合经理</span>
+          </div>
+          <h2 id="debate-title">LLM 思考辩论可视化</h2>
+          <p id="debate-subtitle" class="panel-subtitle">展示每个角色的立场、证据与最终流向。</p>
+        </header>
+        <div id="debate-flow" class="debate-flow empty">
+          <div class="placeholder">
+            <span class="placeholder-icon" aria-hidden="true"></span>
+            <p>暂无辩论链路</p>
+          </div>
+        </div>
+      </section>
+
+      <footer class="footnote">
+        <span>图表和辩论链路用于研究展示，不构成投资建议或交易依据。</span>
+      </footer>
+    </main>
+    <script src="/static/visualization.js"></script>
+  </body>
+</html>

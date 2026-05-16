@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TradingAgents CN · A 股多智能体交易台</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="/static/styles.css?v=20260516-redesign" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">TA</div>
+        <div class="brand-text">
+          <strong>TradingAgents CN</strong>
+          <span>A 股多智能体交易台</span>
+        </div>
+      </div>
+      <div class="topbar-meta">
+        <span id="market-clock" class="market-clock" title="本地时间 / A 股交易时段">
+          <span class="clock-time" id="clock-time">--:--:--</span>
+          <span class="clock-status">
+            <span class="clock-dot" aria-hidden="true"></span>
+            <span id="clock-label">收盘</span>
+          </span>
+        </span>
+        <span id="runtime" class="runtime-pill" title="运行配置">
+          <span class="dot" aria-hidden="true"></span>
+          <span class="runtime-text">正在读取运行配置...</span>
+          <span class="runtime-divider" aria-hidden="true"></span>
+          <label class="runtime-model" title="选择 LLM 模型">
+            <span class="runtime-model-label">模型</span>
+            <select id="model" name="model" form="analysis-form">
+              <option value="gpt-5.4" selected>GPT-5.4</option>
+              <option value="gpt-5.5">GPT-5.5</option>
+            </select>
+          </label>
+        </span>
+        <button
+          id="theme-toggle"
+          class="icon-btn"
+          type="button"
+          aria-label="切换主题"
+          title="切换主题"
+        >
+          <span class="theme-icon" aria-hidden="true"></span>
+        </button>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section id="landing" class="landing">
+        <div class="landing-hero">
+          <span class="landing-eyebrow">A-SHARE MULTI-AGENT TRADING DESK</span>
+          <h1 class="landing-title">让多智能体团队<br/>替你完成 A 股研判</h1>
+          <p class="landing-lede">
+            分析师团队、投研辩论、交易员、风控委员会与组合经理一次性给你结构化结论。
+            输入标的代码，开始一次完整分析。
+          </p>
+        </div>
+
+        <section class="toolbar" aria-label="analysis controls">
+          <form id="analysis-form" class="controls" autocomplete="off">
+            <label class="field field-symbol">
+              <span>标的代码</span>
+              <input
+                id="symbol"
+                name="symbol"
+                value="600519"
+                placeholder="输入股票、ETF 或指数代码，如 600519、588290、000300"
+                autocomplete="off"
+                spellcheck="false"
+              />
+              <div class="symbol-chips" aria-label="常用代码">
+                <button type="button" class="symbol-chip" data-symbol="600519">600519 茅台</button>
+                <button type="button" class="symbol-chip" data-symbol="000858">000858 五粮液</button>
+                <button type="button" class="symbol-chip" data-symbol="300750">300750 宁德</button>
+                <button type="button" class="symbol-chip" data-symbol="000300">000300 沪深</button>
+                <button type="button" class="symbol-chip" data-symbol="588290">588290 科创</button>
+              </div>
+            </label>
+            <label class="field">
+              <span>分析深度</span>
+              <select id="depth" name="depth">
+                <option value="quick">快速 Quick</option>
+                <option value="standard">标准 Standard</option>
+                <option value="deep">深度 Deep</option>
+              </select>
+            </label>
+            <label class="field toggle">
+              <input id="include-decision" name="include_decision" type="checkbox" checked />
+              <span>包含交易决策</span>
+            </label>
+            <button id="submit-btn" type="submit">
+              <span class="btn-label">开始分析</span>
+              <span class="btn-spinner" aria-hidden="true"></span>
+            </button>
+          </form>
+
+          <div id="status" class="status status-idle" role="status" aria-live="polite">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span class="status-text">输入标的代码后开始分析，系统按最新交易日拉取公开数据。</span>
+            <span class="status-elapsed" id="status-elapsed" hidden>00.0s</span>
+          </div>
+        </section>
+
+        <section id="hot-sectors" class="hot-sectors" aria-label="real-time hot sectors">
+          <div class="hot-header">
+            <div class="hot-title-row">
+              <span class="hot-kicker">REAL-TIME</span>
+              <h2>实时热门板块</h2>
+              <span class="hot-pulse" aria-hidden="true">
+                <span class="pulse-dot"></span> LIVE
+              </span>
+            </div>
+            <p class="hot-subtitle">基于 A 股公开行情即时更新，点击任意板块可一键代入代码开始分析。</p>
+          </div>
+          <div id="hot-sectors-grid" class="hot-grid"></div>
+        </section>
+      </section>
+
+      <section id="analysis-visual" class="analysis-visual" aria-label="analysis visualization" hidden>
+        <div class="visual-grid">
+          <article class="panel chart-panel">
+            <header class="panel-header">
+              <div class="panel-kicker">
+                <span class="kicker-tag">REAL K-LINE</span>
+                <span id="chart-provider" class="kicker-hint">等待行情数据</span>
+              </div>
+              <h2 id="chart-title">K 线图</h2>
+              <p id="chart-subtitle" class="panel-subtitle">开始分析后在当前页面加载真实 OHLC 与成交量。</p>
+            </header>
+            <div id="chart-ticker" class="chart-ticker" hidden>
+              <div class="tick-item">
+                <span class="tick-label">收盘</span>
+                <span id="tick-close" class="tick-value">—</span>
+              </div>
+              <div class="tick-item">
+                <span class="tick-label">涨跌</span>
+                <span id="tick-change" class="tick-value">—</span>
+              </div>
+              <div class="tick-item">
+                <span class="tick-label">幅度</span>
+                <span id="tick-pct" class="tick-value">—</span>
+              </div>
+              <div class="tick-item">
+                <span class="tick-label">最高</span>
+                <span id="tick-high" class="tick-value bull">—</span>
+              </div>
+              <div class="tick-item">
+                <span class="tick-label">最低</span>
+                <span id="tick-low" class="tick-value bear">—</span>
+              </div>
+              <div class="tick-item">
+                <span class="tick-label">成交</span>
+                <span id="tick-volume" class="tick-value muted">—</span>
+              </div>
+            </div>
+            <div class="chart-stage">
+              <canvas id="kline-chart" width="1080" height="360" aria-label="真实 K 线图"></canvas>
+            </div>
+          </article>
+
+          <article class="panel chart-panel">
+            <header class="panel-header">
+              <div class="panel-kicker">
+                <span class="kicker-tag">TREND</span>
+                <span class="kicker-hint">CLOSE · MA5 · MA20</span>
+              </div>
+              <h2>趋势图</h2>
+              <p id="trend-subtitle" class="panel-subtitle">收盘价、短期均线与中期均线会随行情数据更新。</p>
+            </header>
+            <div class="chart-stage">
+              <canvas id="trend-chart" width="1080" height="320" aria-label="趋势图"></canvas>
+            </div>
+          </article>
+        </div>
+
+        <article class="panel debate-panel">
+          <header class="panel-header">
+            <div class="panel-kicker">
+              <span class="kicker-tag">LLM DEBATE</span>
+              <span class="kicker-hint">分析中可视化</span>
+            </div>
+            <h2 id="debate-title">LLM 思考辩论过程</h2>
+            <p id="debate-subtitle" class="panel-subtitle">分析开始后展示分析师、投研辩论、交易员、风控和组合经理的推进状态。</p>
+          </header>
+          <div id="debate-flow" class="debate-flow empty">
+            <div class="placeholder">
+              <span class="placeholder-icon" aria-hidden="true"></span>
+              <p>等待分析</p>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="grid" id="result-grid" hidden>
+        <article class="panel panel-report">
+          <header class="panel-header">
+            <div class="panel-kicker">
+              <span class="kicker-tag">NEUTRAL REPORT</span>
+              <span class="kicker-hint">中性公开信息</span>
+            </div>
+            <h2 id="report-title">等待分析</h2>
+            <p id="report-subtitle" class="panel-subtitle">中性报告会汇总公司概览、行情、财务、公告与风险。</p>
+          </header>
+          <div id="report-content" class="content empty">
+            <div class="placeholder">
+              <span class="placeholder-icon" aria-hidden="true"></span>
+              <p>暂无报告</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel panel-decision">
+          <header class="panel-header">
+            <div class="panel-kicker">
+              <span class="kicker-tag">TRADING DECISION</span>
+              <span class="kicker-hint">多智能体辩论 · 组合经理决策</span>
+            </div>
+            <h2 id="decision-title">等待分析</h2>
+            <p id="decision-subtitle" class="panel-subtitle">分析师 → 投研辩论 → 交易员计划 → 风控委员会 → 组合经理。</p>
+          </header>
+          <div id="decision-content" class="content empty">
+            <div class="placeholder">
+              <span class="placeholder-icon" aria-hidden="true"></span>
+              <p>暂无决策</p>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <footer class="footnote">
+        <span>本内容由 AI 基于公开信息整理，仅供研究阅读，不构成投资建议。</span>
+      </footer>
+    </main>
+    <script src="/static/app.js?v=20260516-redesign"></script>
+  </body>
+</html>
