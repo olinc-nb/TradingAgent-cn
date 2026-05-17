@@ -299,8 +299,9 @@ function debateSection(debate) {
   if (!debate) return "";
   const bull = agentCard(debate.bull_case, "bull");
   const bear = agentCard(debate.bear_case, "bear");
-  const synth = debate.manager_synthesis
-    ? `<div class="debate-synthesis">${escapeHtml(debate.manager_synthesis)}</div>`
+  const synthText = toReadableText(debate.manager_synthesis);
+  const synth = synthText
+    ? `<div class="debate-synthesis">${escapeHtml(synthText)}</div>`
     : "";
   return `<div class="section"><h3>投研辩论</h3><div class="debate-grid">${bull}${bear}</div>${synth}</div>`;
 }
@@ -312,8 +313,9 @@ function riskSection(risk) {
     agentCard(risk.neutral_view, "info"),
     agentCard(risk.conservative_view, "warn"),
   ].join("");
-  const decision = risk.portfolio_manager_decision
-    ? `<div class="debate-synthesis">${escapeHtml(risk.portfolio_manager_decision)}</div>`
+  const decisionText = toReadableText(risk.portfolio_manager_decision);
+  const decision = decisionText
+    ? `<div class="debate-synthesis">${escapeHtml(decisionText)}</div>`
     : "";
   return `<div class="section"><h3>风控委员会</h3><div class="risk-grid">${items}</div>${decision}</div>`;
 }
@@ -321,7 +323,11 @@ function riskSection(risk) {
 function agentCard(agent, tone = "") {
   if (!agent) return "";
   const evidence = agent.evidence && agent.evidence.length
-    ? `<ul class="list">${agent.evidence.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+    ? `<ul class="list">${agent.evidence
+        .map((item) => toReadableText(item))
+        .filter((text) => text && text.trim())
+        .map((text) => `<li>${escapeHtml(text)}</li>`)
+        .join("")}</ul>`
     : "";
   const badgeTone = tone || stanceTone(agent.stance);
   return `
@@ -330,7 +336,7 @@ function agentCard(agent, tone = "") {
         <span>${escapeHtml(agentDisplayName(agent.agent))}</span>
         <span class="badge ${badgeTone}">${escapeHtml(agent.stance || "-")}</span>
       </div>
-      <p>${escapeHtml(agent.summary || "")}</p>
+      <p>${escapeHtml(toReadableText(agent.summary))}</p>
       ${evidence}
     </div>
   `;
@@ -377,17 +383,68 @@ function stanceTone(stance) {
 }
 
 function section(title, body, className = "") {
-  const text = escapeHtml(body || "").replaceAll("\n", "<br>");
+  const text = escapeHtml(toReadableText(body)).replaceAll("\n", "<br>");
   return `<div class="section ${className}"><h3>${escapeHtml(title)}</h3><p>${text}</p></div>`;
 }
 
 function listSection(title, items) {
-  const list = (items || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+  const list = (items || [])
+    .map((item) => toReadableText(item))
+    .filter((text) => text && text.trim())
+    .map((text) => `<li>${escapeHtml(text)}</li>`)
+    .join("");
   return `<div class="section"><h3>${escapeHtml(title)}</h3><ul class="list">${list}</ul></div>`;
 }
 
 function joinText(parts) {
-  return (parts || []).filter((p) => p && String(p).trim()).join("\n\n");
+  return (parts || [])
+    .map((p) => toReadableText(p))
+    .filter((p) => p && p.trim())
+    .join("\n\n");
+}
+
+const PROSE_KEYS = [
+  "summary",
+  "synthesis",
+  "manager_synthesis",
+  "decision",
+  "portfolio_manager_decision",
+  "conclusion",
+  "narrative",
+  "plan",
+  "trader_plan",
+  "text",
+  "content",
+  "value",
+  "result",
+  "message",
+];
+const STRUCTURAL_KEYS = new Set(["agent", "stance", "evidence", "view", "role", "phase"]);
+
+function toReadableText(value) {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => toReadableText(item))
+      .filter((text) => text && text.trim())
+      .join("；");
+  }
+  if (typeof value === "object") {
+    for (const key of PROSE_KEYS) {
+      const candidate = value[key];
+      if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+    }
+    const parts = [];
+    for (const [key, child] of Object.entries(value)) {
+      if (STRUCTURAL_KEYS.has(key)) continue;
+      const text = toReadableText(child);
+      if (text && text.trim()) parts.push(text);
+    }
+    return parts.join("；");
+  }
+  return String(value);
 }
 
 function setStatus(message, state) {

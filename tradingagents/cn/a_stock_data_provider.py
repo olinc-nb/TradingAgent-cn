@@ -225,7 +225,7 @@ class AStockDataProvider(ChinaMarketDataProvider):
 
         bars = self._tencent_daily_bars(symbol)
         if bars:
-            self._add_limitation("mootdx 不可用，已使用腾讯财经日线接口补齐 K 线。")
+            self._add_limitation("mootdx 日线接口调用失败，已用腾讯财经日线数据补齐。")
             return bars
 
         quote = self._get_quote(symbol)
@@ -584,8 +584,7 @@ class AStockDataProvider(ChinaMarketDataProvider):
     def _mootdx_daily_bars(self, symbol: CNSymbol) -> list[dict]:
         try:
             from mootdx.quotes import Quotes
-        except Exception as exc:
-            self._add_limitation(f"mootdx 未安装或不可用，未获取完整日线: {exc}")
+        except Exception:
             return []
 
         def _fetch_bars():
@@ -599,8 +598,7 @@ class AStockDataProvider(ChinaMarketDataProvider):
                 _TTL_BARS,
                 _fetch_bars,
             )
-        except Exception as exc:
-            self._add_limitation(f"mootdx 日线接口调用失败: {exc}")
+        except Exception:
             return []
 
         bars = []

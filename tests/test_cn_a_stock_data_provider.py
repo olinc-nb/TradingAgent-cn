@@ -119,3 +119,28 @@ def test_a_stock_data_provider_limitations_do_not_leak_between_runs(monkeypatch)
 
     assert not any("akshare 个股基本面" in item for item in etf_report.data_limitations)
     assert not any("股票 Mock" in item for item in etf_report.data_limitations)
+
+
+def test_mootdx_fallback_to_tencent_emits_single_limitation(monkeypatch):
+    provider = AStockDataProvider()
+    monkeypatch.setattr(provider, "_mootdx_daily_bars", lambda symbol: [])
+    monkeypatch.setattr(
+        provider,
+        "_tencent_daily_bars",
+        lambda symbol: [
+            {"date": "2026-05-09", "open": 1.0, "high": 1.1, "low": 0.9, "close": 1.05, "volume": 1},
+            {"date": "2026-05-10", "open": 1.05, "high": 1.2, "low": 1.0, "close": 1.18, "volume": 2},
+        ],
+    )
+
+    from tradingagents.cn.symbol import normalize_cn_symbol
+
+    bars = provider.get_daily_bars(normalize_cn_symbol("600519"), "2026-05-01", "2026-05-10")
+    limitations = provider.get_data_limitations()
+
+    assert len(bars) == 2
+    fallback_msgs = [m for m in limitations if "mootdx" in m]
+    assert len(fallback_msgs) == 1
+    assert "已用腾讯财经日线数据补齐" in fallback_msgs[0]
+    assert not any("未安装" in m for m in limitations)
+    assert not any("接口调用失败:" in m for m in limitations)

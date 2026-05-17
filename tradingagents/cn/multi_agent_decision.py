@@ -787,20 +787,54 @@ def _normalize_decision_payload(payload: dict[str, Any]) -> dict[str, Any]:
     return normalized
 
 
+_PROSE_PREFERENCE = (
+    "summary",
+    "synthesis",
+    "manager_synthesis",
+    "decision",
+    "portfolio_manager_decision",
+    "conclusion",
+    "narrative",
+    "plan",
+    "trader_plan",
+    "text",
+    "content",
+    "value",
+    "result",
+)
+
+_STRUCTURAL_KEYS = {"agent", "stance", "evidence", "view", "role", "phase"}
+
+
 def _stringify_llm_value(value: Any) -> str:
     if isinstance(value, str):
         return value
     if isinstance(value, (int, float, bool)):
         return str(value)
     if isinstance(value, dict):
+        for key in _PROSE_PREFERENCE:
+            if key in value and isinstance(value[key], str) and value[key].strip():
+                return value[key].strip()
         parts = []
         for key, item in value.items():
+            if key in _STRUCTURAL_KEYS:
+                continue
             if item in (None, "", [], {}):
                 continue
-            parts.append(f"{key}: {_stringify_llm_value(item)}")
+            child = _stringify_llm_value(item)
+            if child:
+                parts.append(child)
         return "；".join(parts)
     if isinstance(value, list):
-        return "；".join(_stringify_llm_value(item) for item in value if item not in (None, "", [], {}))
+        return "；".join(
+            text
+            for text in (
+                _stringify_llm_value(item)
+                for item in value
+                if item not in (None, "", [], {})
+            )
+            if text
+        )
     return str(value)
 
 

@@ -5,6 +5,8 @@ from tradingagents.cn.multi_agent_decision import (
     CNMultiAgentDecisionFlow,
     _chat_completion_urls,
     _llm_gateway_session,
+    _normalize_decision_payload,
+    _stringify_llm_value,
 )
 from tradingagents.cn.services.analysis_service import CNAnalysisService
 from tradingagents.cn.symbol import normalize_cn_symbol
@@ -217,3 +219,54 @@ def test_openai_compatible_gateway_uses_v1_once_and_ignores_proxy_by_default(mon
 
     monkeypatch.setenv("TRADINGAGENTS_LLM_USE_PROXY", "true")
     assert _llm_gateway_session().trust_env is True
+
+
+def test_stringify_llm_value_prefers_prose_over_dict_dump():
+    agent_view = {
+        "agent": "Research Manager",
+        "stance": "等待确认",
+        "summary": "在趋势未企稳前以观察为主。",
+        "evidence": ["综合得分为-1", "技术面偏弱"],
+    }
+
+    result = _stringify_llm_value(agent_view)
+
+    assert result == "在趋势未企稳前以观察为主。"
+    assert "agent:" not in result
+    assert "stance:" not in result
+    assert "evidence" not in result
+
+
+def test_normalize_decision_payload_unwraps_nested_prose_fields():
+    payload = {
+        "trader_plan": {
+            "agent": "Trader",
+            "stance": "先等后动",
+            "summary": "当前不建议新开仓，等待企稳信号。",
+            "evidence": ["T+1 风险", "成交活跃度尚可"],
+        },
+        "investment_debate": {
+            "manager_synthesis": {
+                "agent": "Research Manager",
+                "summary": "短线趋势偏弱，建议先观察。",
+            },
+        },
+        "risk_debate": {
+            "portfolio_manager_decision": {
+                "stance": "采纳中性方案",
+                "summary": "组合层面不新增暴露。",
+            },
+        },
+    }
+
+    normalized = _normalize_decision_payload(payload)
+
+    assert normalized["trader_plan"] == "当前不建议新开仓，等待企稳信号。"
+    assert (
+        normalized["investment_debate"]["manager_synthesis"]
+        == "短线趋势偏弱，建议先观察。"
+    )
+    assert (
+        normalized["risk_debate"]["portfolio_manager_decision"]
+        == "组合层面不新增暴露。"
+    )
